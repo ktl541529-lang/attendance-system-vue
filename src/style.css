@@ -958,3 +958,39 @@ textarea.form-control {
 .mt-2 {
   margin-top: 8px;
 }
+
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+.chart-card {
+  padding: 20px;
+}
+
+.chart-card--wide {
+  grid-column: span 3;
+}
+
+.chart-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-2);
+  margin-bottom: 16px;
+}
+
+.chart-wrap {
+  height: 220px;
+}
+
+@media (max-width: 900px) {
+  .charts-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .chart-card--wide {
+    grid-column: span 1;
+  }
+}
