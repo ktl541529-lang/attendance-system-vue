@@ -1,4 +1,4 @@
-# 某某醫院人事管理系統 — Vue 3 + Vite 重構版
+# 醫院出勤申請管理系統 — Vue 3 + Vite 重構版
 
 本專案為 **attendance-system** 的 Vue 3 Vite 重構版本  
 將原本以單一 HTML + CDN 實作的前端，重構為 Vite + SFC 元件化架構，後端 API 不變
