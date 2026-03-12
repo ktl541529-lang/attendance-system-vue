@@ -139,7 +139,7 @@ onMounted(async () => {
               </tr>
               <tr v-for="r in records.slice(0, 5)" :key="r.id">
                 <td><span class="chip">{{ r.type }}</span></td>
-                <td class="text-mono text-sm">{{ r.start_date }} ~ {{ r.end_date }}</td>
+                <td class="text-mono text-sm">{{ r.start_date?.split('T')[0] }} ~ {{ r.end_date?.split('T')[0] }}</td>
                 <td>{{ r.reason }}</td>
                 <td><span class="badge" :class="statusBadge(r.status)">{{ statusLabel(r.status) }}</span></td>
                 <td class="text-sm">{{ fmtDate(r.created_at) }}</td>
