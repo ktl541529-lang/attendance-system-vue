@@ -107,4 +107,4 @@ npm install
 npm run dev
 ```
 
-後端 API：https://github.com/ktl541529-lang/attendance-system（部署於 Render）
+後端 API：[attendance-system](https://github.com/ktl541529-lang/attendance-system)（部署於 Render）
