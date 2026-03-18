@@ -7,32 +7,88 @@
 > | v1 | `attendance-system` | 後端架構設計、業務邏輯實作 |
 > | v2 ｜**你在這裡** | `attendance-system-vue` | 前端元件化工程實踐（Vue 3 + Vite） |
 > | v3 | `attendance-system-ts` | 企業級前端重構（Angular 17+ + TypeScript） |
->
 
 ---
 
-v1 的單一 HTML 前端在狀態管理與路由控制上開始出現工程瓶頸——token 散落為全域變數、頁面切換靠 v-show、權限保護無系統性攔截。本版以 Vue 3 + Vite 重構，針對這三個問題分別導入 Pinia、Vue Router 與路由守衛，並新增原本不存在的角色分離儀表板。
+## 📌 Project Overview
 
-🌐 **線上 Demo** → [點此開啟系統](https://ktl541529-lang.github.io/attendance-system-vue/)
+這是一套醫院員工出勤申請管理的全端網頁系統，前端以 Vue 3 + Vite 實作，串接共用的 Node.js / PostgreSQL 後端。
+本版本針對 v1 CDN 原型的工程瓶頸進行重構：登入狀態散落為全域變數的問題以 Pinia 集中管理解決、缺乏 URL 路由的問題以 Vue Router 4 搭配導航守衛解決、API 呼叫分散各處的問題以統一模組加 401 自動登出機制解決。
+
+🌐 **線上 Demo** → [點此開啟系統](https://attendance-system-vue-seven.vercel.app)
 
 | 層級 | 服務 |
 |------|------|
-| 前端 | GitHub Pages（Vue 3 + Vite） |
+| 前端 | Vercel（Vue 3 + Vite） |
 | 後端 | Render（Node.js）— 與 v1 共用 |
-| 資料庫 | Railway（MySQL）— 與 v1 共用 |
+| 資料庫 | Supabase（PostgreSQL）— 與 v1 共用 |
 
 **示範帳號**
 
 | 帳號 | 密碼 | 角色 |
 |------|------|------|
 | admin | 1234 | 管理者 |
-| emp1 | 1234 | 一般員工 |
+| emp1  | 1234 | 一般員工 |
+
+---
+
+## 🏗 System Architecture
+
+```
+┌─────────────────────────────────────────────────────┐
+│                   Vue 3 + Vite (Vercel)              │
+│                                                      │
+│  ┌────────────┐  ┌──────────────┐  ┌─────────────┐  │
+│  │ Vue Router │  │ Pinia Store  │  │  api/       │  │
+│  │ + Guards   │  │ auth.js      │  │  index.js   │  │
+│  └─────┬──────┘  └──────┬───────┘  └──────┬──────┘  │
+│        │                │                  │         │
+│  ┌─────▼────────────────▼──────────────────▼──────┐  │
+│  │                   Views / Components            │  │
+│  │  LoginView  DashboardView  MyRequestsView  ...  │  │
+│  └─────────────────────────────────────────────────┘  │
+└───────────────────────────┬─────────────────────────┘
+                            │ REST API (HTTPS)
+┌───────────────────────────▼─────────────────────────┐
+│          Node.js + Express Backend (Render)          │
+└───────────────────────────┬─────────────────────────┘
+                            │
+┌───────────────────────────▼─────────────────────────┐
+│              Supabase PostgreSQL                     │
+└──────────────────────────────────────────────────────┘
+```
+
+**前端資料流：**
+
+```
+URL 變更 → Router Guard（驗證登入 / 角色）→ View 載入 → API 呼叫 → Pinia Store 更新 → UI 重繪
+```
+
+---
+
+## ✨ Features
+
+**員工功能**
+- 登入 / 登出（JWT，頁面重整後自動還原登入狀態）
+- 個人申請列表（含狀態篩選）
+- 新增 / 編輯 / 刪除出勤申請
+- 查看審核結果與退回原因
+
+**管理者功能**
+- 角色分離儀表板（全員統計、假別分佈、申請趨勢圖）
+- 審核管理（核准 / 退回，需填退回原因）
+- 全部申請紀錄查詢
+- 員工帳號管理
+- 操作稽核紀錄查詢
+
+**系統特性**
+- 路由守衛——未登入自動導回登入頁，員工無法存取管理頁面
+- 401 自動登出——Token 過期即清除並導回登入頁
+- Hash Mode 路由——相容靜態部署，無需後端 rewrite
 
 ---
 
 ## 🎯 重構動機：CDN 版本的工程限制
-
-v1 的前端以單一 HTML 檔搭配 Vue 3 CDN 完成，在功能驗證上沒有問題，但帶來了幾個工程上的痛點，這些痛點正是本次重構要解決的：
 
 | 問題 | CDN 版本的狀況 | 重構後的解法 |
 |------|--------------|------------|
@@ -44,7 +100,7 @@ v1 的前端以單一 HTML 檔搭配 Vue 3 CDN 完成，在功能驗證上沒有
 
 ---
 
-## 🔑 技術亮點
+## 🔑 Technical Highlights
 
 ### 1. Pinia 集中狀態管理
 
@@ -69,18 +125,14 @@ router.beforeEach(async (to) => {
 
 ### 4. 元件化架構
 
-將 CDN 版的單一 HTML 拆分為可複用元件，透過 `<slot>` 組合各 View，大幅減少重複程式碼：
+將 CDN 版的單一 HTML 拆分為可複用元件，透過 `<slot>` 組合各 View：
 
 ```
 AppLayout（外框）
   └─ AppSidebar（導覽，含角色權限控制）
   └─ <slot>（各 View 內容）
-       └─ FormModal（新增 / 編輯 Modal）
+       └─ FormModal（新增 / 編輯申請 Modal）
 ```
-
-### 5. Hash Mode 相容靜態部署
-
-使用 `createWebHashHistory`，讓 Vue Router 的前端路由相容 GitHub Pages 靜態伺服器，無需後端 rewrite 設定。
 
 ---
 
@@ -97,7 +149,7 @@ AppLayout（外框）
 
 ---
 
-## 🛠 技術棧
+## 🛠 Tech Stack
 
 | 層級 | 技術 |
 |------|------|
@@ -106,11 +158,11 @@ AppLayout（外框）
 | 路由 | Vue Router 4（Hash Mode） |
 | HTTP 管理 | Fetch API 統一模組（含 401 攔截） |
 | 樣式 | 原生 CSS |
-| 部署 | GitHub Pages + gh-pages |
+| 部署 | Vercel |
 
 ---
 
-## 📁 專案結構
+## 📁 Project Structure
 
 ```
 src/
@@ -138,7 +190,7 @@ src/
 
 ---
 
-## ⚙️ 本機開發
+## ⚙️ Local Development
 
 ```bash
 npm install
@@ -146,6 +198,24 @@ npm run dev
 ```
 
 後端 API：[attendance-system](https://github.com/ktl541529-lang/attendance-system)（部署於 Render）
+
+API Base URL 設定於 `src/api/index.js`：
+
+```javascript
+const API_BASE = 'https://attendance-system-p71q.onrender.com/api';
+```
+
+---
+
+## 🔮 Future Improvements
+
+- [ ] 多租戶架構——讓不同診所 / 機構各自使用獨立資料空間
+- [ ] Stripe 訂閱金流——轉型為按月計費的 SaaS 產品
+- [ ] TypeScript 遷移——為 Vue 3 版加入型別安全（參考 v3 Angular 版的實作）
+- [ ] 單元測試——使用 Vitest 為 Pinia store 和 API 模組補充測試覆蓋
+- [ ] PWA 支援——加入 Service Worker，支援離線瀏覽申請紀錄
+- [ ] i18n 多語系——支援繁中 / 英文介面切換
+- [ ] 深色模式——CSS 變數架構已具備切換條件
 
 ---
 
