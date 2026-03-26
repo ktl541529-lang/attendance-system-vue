@@ -1,23 +1,28 @@
-const API_BASE = 'https://attendance-system-p71q.onrender.com/api';
+import axios from 'axios'
+import router from '@/router'
 
-const getToken = () => localStorage.getItem('token');
+const api = axios.create({
+  baseURL: 'https://attendance-system-p71q.onrender.com/api',
+  timeout: 10000
+})
 
-export async function api(method, path, body = null) {
-  const headers = { 'Content-Type': 'application/json' };
-  const token = getToken();
-  if (token) headers['Authorization'] = `Bearer ${token}`;
+// Request interceptor：每次自動帶 token
+api.interceptors.request.use(config => {
+  const token = localStorage.getItem('token')
+  if (token) config.headers.Authorization = `Bearer ${token}`
+  return config
+})
 
-  const opts = { method, headers };
-  if (body) opts.body = JSON.stringify(body);
-
-  const res = await fetch(API_BASE + path, opts);
-  const data = await res.json();
-
-  if (res.status === 401) {
-    localStorage.removeItem('token');
-    window.location.href = '/login';
-    throw new Error('Token 已過期，請重新登入');
+// Response interceptor：401 自動登出
+api.interceptors.response.use(
+  res => res.data,
+  err => {
+    if (err.response?.status === 401) {
+      localStorage.removeItem('token')
+      router.push('/login')
+    }
+    return Promise.reject(err)
   }
+)
 
-  return { ...data, _status: res.status };
-}
+export default api
