@@ -1,7 +1,7 @@
-<script setup>
+﻿<script setup>
 import { ref, onMounted } from 'vue';
 import api from '../api/index.js';
-import AppLayout from '../components/AppLayout.vue';
+import AppLayout from '@/components/layout/AppLayout.vue';
 
 const records = ref([]);
 const pageLoading = ref(false);

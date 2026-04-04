@@ -1,9 +1,9 @@
-<script setup>
+﻿<script setup>
 import { ref, onMounted } from 'vue';
 import { useAuthStore } from '../stores/auth.js';
 import api from '../api/index.js';
-import AppLayout from '../components/AppLayout.vue';
-import FormModal from '../components/FormModal.vue';
+import AppLayout from '@/components/layout/AppLayout.vue';
+import FormModal from '@/components/ui/FormModal.vue';
 
 const auth = useAuthStore();
 

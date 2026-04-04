@@ -1,8 +1,8 @@
-<script setup>
+﻿<script setup>
 import { ref, computed, onMounted } from 'vue';
 import { useAuthStore } from '../stores/auth.js';
-import api from '../api/index.js';
-import AppLayout from '../components/AppLayout.vue';
+import api from '@/api/index.js';
+import AppLayout from '@/components/layout/AppLayout.vue';
 import { Pie, Bar, Line } from 'vue-chartjs';
 import {
   Chart as ChartJS,
