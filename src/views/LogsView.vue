@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted } from 'vue';
-import { api } from '../api/index.js';
+import api from '../api/index.js';
 import AppLayout from '../components/AppLayout.vue';
 
 const logs = ref([]);
@@ -38,10 +38,12 @@ function actionBadgeClass(action) {
 }
 
 async function fetchLogs(page = 1) {
-  const params = new URLSearchParams();
-  params.set('page', page);
-  params.set('limit', pagination.value.limit);
-  const data = await api('GET', `/users/audit-logs?${params}`);
+  const params = {
+    page,
+    limit: pagination.value.limit,
+  };
+
+  const data = await api.get('/users/audit-logs', { params });
   if (data.success) {
     logs.value = data.data;
     const total = data.pagination?.total || 0;
@@ -50,7 +52,7 @@ async function fetchLogs(page = 1) {
       total,
       page,
       limit,
-      totalPages: Math.ceil(total / limit)
+      totalPages: Math.ceil(total / limit),
     };
   }
 }

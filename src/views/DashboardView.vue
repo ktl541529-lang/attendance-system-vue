@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { useAuthStore } from '../stores/auth.js';
-import { api } from '../api/index.js';
+import api from '../api/index.js';
 import AppLayout from '../components/AppLayout.vue';
 import { Pie, Bar, Line } from 'vue-chartjs';
 import {
@@ -269,8 +269,8 @@ function fmtDate(d) {
 onMounted(async () => {
   pageLoading.value = true;
   const [myData, pendingData] = await Promise.all([
-    api('GET', '/attendance'),
-    api('GET', '/attendance?status=pending&limit=1'),
+    api.get('/attendance'),
+    api.get('/attendance', { params: { status: 'pending', limit: 1 } }),
   ]);
   if (myData.success) records.value = myData.data;
   stats.value = {

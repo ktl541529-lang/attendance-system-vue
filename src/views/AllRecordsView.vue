@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted } from 'vue';
-import { api } from '../api/index.js';
+import api from '../api/index.js';
 import AppLayout from '../components/AppLayout.vue';
 
 const records = ref([]);
@@ -33,15 +33,17 @@ function toast(type, msg) {
 }
 
 async function fetchRecords(page = 1) {
-  const params = new URLSearchParams();
-  params.set('page', page);
-  params.set('limit', pagination.value.limit);
-  if (filter.value.keyword) params.set('keyword', filter.value.keyword);
-  if (filter.value.status) params.set('status', filter.value.status);
-  if (filter.value.type) params.set('type', filter.value.type);
-  if (filter.value.date_from) params.set('date_from', filter.value.date_from);
-  if (filter.value.date_to) params.set('date_to', filter.value.date_to);
-  const data = await api('GET', `/attendance?${params}`);
+  const params = {
+    page,
+    limit: pagination.value.limit,
+  };
+  if (filter.value.keyword) params.keyword = filter.value.keyword;
+  if (filter.value.status) params.status = filter.value.status;
+  if (filter.value.type) params.type = filter.value.type;
+  if (filter.value.date_from) params.date_from = filter.value.date_from;
+  if (filter.value.date_to) params.date_to = filter.value.date_to;
+
+  const data = await api.get('/attendance', { params });
   if (data.success) {
     records.value = data.data;
     pagination.value = { ...pagination.value, ...data.pagination, page };

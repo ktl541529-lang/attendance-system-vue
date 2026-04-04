@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted } from 'vue';
-import { api } from '../api/index.js';
+import api from '../api/index.js';
 import AppLayout from '../components/AppLayout.vue';
 
 const records = ref([]);
@@ -41,7 +41,7 @@ async function fetchRecords() {
   params.set('status', 'pending');
   if (filter.value.keyword) params.set('keyword', filter.value.keyword);
   if (filter.value.type) params.set('type', filter.value.type);
-  const data = await api('GET', `/attendance?${params}`);
+  const data = await api.get(`/attendance?${params}`);
   if (data.success) {
     records.value = data.data;
     pendingCount.value = data.pagination?.total || 0;
@@ -56,7 +56,7 @@ function debounceSearch() {
 async function doApprove(r) {
   saving.value = true;
   try {
-    const data = await api('PATCH', `/attendance/${r.id}/approve`);
+    const data = await api.patch(`/attendance/${r.id}/approve`);
     if (data.success) {
       toast('success', data.message);
       await fetchRecords();
@@ -79,7 +79,7 @@ async function doReject() {
   if (!rejectReason.value.trim()) { rejectError.value = '請填寫退回原因'; return; }
   saving.value = true;
   try {
-    const data = await api('PATCH', `/attendance/${rejectTarget.value.id}/reject`, {
+    const data = await api.patch(`/attendance/${rejectTarget.value.id}/reject`, {
       reject_reason: rejectReason.value
     });
     if (data.success) {

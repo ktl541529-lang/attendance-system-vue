@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useAuthStore } from '../stores/auth.js';
-import { api } from '../api/index.js';
+import api from '../api/index.js';
 import AppLayout from '../components/AppLayout.vue';
 import FormModal from '../components/FormModal.vue';
 
@@ -51,7 +51,7 @@ async function fetchRecords() {
   if (filter.value.type) params.set('type', filter.value.type);
   if (filter.value.date_from) params.set('date_from', filter.value.date_from);
   if (filter.value.date_to) params.set('date_to', filter.value.date_to);
-  const data = await api('GET', `/attendance?${params}`);
+  const data = await api.get(`/attendance?${params}`);
   if (data.success) records.value = data.data;
 }
 
@@ -75,9 +75,9 @@ async function onSaved(formData, done) {
   try {
     let data;
     if (editingRecord.value) {
-      data = await api('PUT', `/attendance/${editingRecord.value.id}`, formData);
+      data = await api.put(`/attendance/${editingRecord.value.id}`, formData);
     } else {
-      data = await api('POST', '/attendance', formData);
+      data = await api.post('/attendance', formData);
     }
     if (data.success) {
       toast('success', data.message);
@@ -102,7 +102,7 @@ function confirmDelete(r) {
 async function doDelete() {
   saving.value = true;
   try {
-    const data = await api('DELETE', `/attendance/${deleteTarget.value.id}`);
+    const data = await api.delete(`/attendance/${deleteTarget.value.id}`);
     if (data.success) {
       toast('success', data.message);
       showDeleteModal.value = false;

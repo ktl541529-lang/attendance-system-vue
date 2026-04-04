@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted } from 'vue';
-import { api } from '../api/index.js';
+import api from '../api/index.js';
 import AppLayout from '../components/AppLayout.vue';
 
 const users = ref([]);
@@ -56,9 +56,9 @@ async function onSubmit() {
     if (!payload.password) delete payload.password;
     let data;
     if (editingUser.value) {
-      data = await api('PUT', `/users/${editingUser.value.id}`, payload);
+      data = await api.put(`/users/${editingUser.value.id}`, payload);
     } else {
-      data = await api('POST', '/users', payload);
+      data = await api.post('/users', payload);
     }
     if (data.success) {
       toast('success', data.message);
@@ -80,7 +80,7 @@ function confirmDelete(u) {
 async function doDelete() {
   saving.value = true;
   try {
-    const data = await api('DELETE', `/users/${deleteTarget.value.id}`);
+    const data = await api.delete(`/users/${deleteTarget.value.id}`);
     if (data.success) {
       toast('success', data.message);
       showDeleteModal.value = false;
@@ -95,7 +95,7 @@ async function doDelete() {
 }
 
 async function fetchUsers() {
-  const data = await api('GET', '/users');
+  const data = await api.get('/users');
   if (data.success) users.value = data.data;
 }
 
