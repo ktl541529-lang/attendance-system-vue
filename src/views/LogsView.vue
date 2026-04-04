@@ -1,67 +1,34 @@
 ﻿<script setup>
-import { ref, onMounted } from 'vue';
-import api from '../api/index.js';
-import AppLayout from '@/components/layout/AppLayout.vue';
+import { ref, onMounted } from 'vue'
+import { getAuditLogsApi } from '@/api/logs.js'
+import AppLayout from '@/components/layout/AppLayout.vue'
+import { fmtDate, actionLabel, actionBadgeClass } from '@/utils/format.js'
 
-const logs = ref([]);
-const pageLoading = ref(false);
-const pagination = ref({ total: 0, page: 1, limit: 20, totalPages: 1 });
-
-function fmtDate(d) {
-  return d ? new Date(d).toLocaleString('zh-TW', {
-    year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit', second: '2-digit'
-  }).replace(/\//g, '-') : '—';
-}
-
-function actionLabel(action) {
-  const map = {
-    login: '登入',
-    logout: '登出',
-    create_request: '新增申請',
-    update_request: '編輯申請',
-    delete_request: '刪除申請',
-    approve_request: '核准申請',
-    reject_request: '退回申請',
-    create_user: '新增員工',
-    update_user: '編輯員工',
-    delete_user: '刪除員工',
-  };
-  return map[action] || action;
-}
-
-function actionBadgeClass(action) {
-  if (action.includes('approve')) return 'badge-approved';
-  if (action.includes('reject') || action.includes('delete')) return 'badge-rejected';
-  if (action.includes('create')) return 'badge-pending';
-  return '';
-}
+const logs = ref([])
+const pageLoading = ref(false)
+const pagination = ref({ total: 0, page: 1, limit: 20, totalPages: 1 })
 
 async function fetchLogs(page = 1) {
-  const params = {
-    page,
-    limit: pagination.value.limit,
-  };
-
-  const data = await api.get('/users/audit-logs', { params });
+  const params = { page, limit: pagination.value.limit }
+  const data = await getAuditLogsApi(params)
   if (data.success) {
-    logs.value = data.data;
-    const total = data.pagination?.total || 0;
-    const limit = pagination.value.limit;
+    logs.value = data.data
+    const total = data.pagination?.total || 0
+    const limit = pagination.value.limit
     pagination.value = {
       total,
       page,
       limit,
       totalPages: Math.ceil(total / limit),
-    };
+    }
   }
 }
 
 onMounted(async () => {
-  pageLoading.value = true;
-  await fetchLogs();
-  pageLoading.value = false;
-});
+  pageLoading.value = true
+  await fetchLogs()
+  pageLoading.value = false
+})
 </script>
 
 <template>

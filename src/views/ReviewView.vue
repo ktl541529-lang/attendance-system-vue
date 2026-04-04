@@ -1,104 +1,98 @@
 ﻿<script setup>
-import { ref, onMounted } from 'vue';
-import api from '../api/index.js';
-import AppLayout from '@/components/layout/AppLayout.vue';
+import { ref, onMounted } from 'vue'
+import {
+  getAttendanceApi,
+  approveAttendanceApi,
+  rejectAttendanceApi,
+} from '@/api/attendance.js'
+import AppLayout from '@/components/layout/AppLayout.vue'
+import { fmtDate, fmtDay } from '@/utils/format.js'
 
-const records = ref([]);
-const pageLoading = ref(false);
-const saving = ref(false);
-const toasts = ref([]);
-let toastCounter = 0;
+const records = ref([])
+const pageLoading = ref(false)
+const saving = ref(false)
+const toasts = ref([])
+let toastCounter = 0
 
-const showRejectModal = ref(false);
-const rejectTarget = ref(null);
-const rejectReason = ref('');
-const rejectError = ref('');
+const showRejectModal = ref(false)
+const rejectTarget = ref(null)
+const rejectReason = ref('')
+const rejectError = ref('')
 
-const pendingCount = ref(0);
-const filter = ref({ keyword: '', type: '' });
-const leaveTypes = ['特休', '病假', '事假', '公假', '育嬰留停', '加班補休', '其他'];
+const pendingCount = ref(0)
+const filter = ref({ keyword: '', type: '' })
+const leaveTypes = ['事假', '病假', '年假', '喪假', '公傷假', '生理假', '其他']
 
-let searchTimer = null;
-
-function fmtDate(d) {
-  return d ? new Date(d).toLocaleString('zh-TW', {
-    year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit'
-  }).replace(/\//g, '-') : '—';
-}
-function fmtDay(d) {
-  return d ? d.split('T')[0] : '—';
-}
+let searchTimer = null
 
 function toast(type, msg) {
-  const id = ++toastCounter;
-  toasts.value.push({ id, type, msg });
-  setTimeout(() => { toasts.value = toasts.value.filter(t => t.id !== id); }, 3500);
+  const id = ++toastCounter
+  toasts.value.push({ id, type, msg })
+  setTimeout(() => { toasts.value = toasts.value.filter(t => t.id !== id) }, 3500)
 }
 
 async function fetchRecords() {
-  const params = new URLSearchParams();
-  params.set('status', 'pending');
-  if (filter.value.keyword) params.set('keyword', filter.value.keyword);
-  if (filter.value.type) params.set('type', filter.value.type);
-  const data = await api.get(`/attendance?${params}`);
+  const params = { status: 'pending' }
+  if (filter.value.keyword) params.keyword = filter.value.keyword
+  if (filter.value.type) params.type = filter.value.type
+  const data = await getAttendanceApi(params)
   if (data.success) {
-    records.value = data.data;
-    pendingCount.value = data.pagination?.total || 0;
+    records.value = data.data
+    pendingCount.value = data.pagination?.total || 0
   }
 }
 
 function debounceSearch() {
-  clearTimeout(searchTimer);
-  searchTimer = setTimeout(() => fetchRecords(), 400);
+  clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => fetchRecords(), 400)
 }
 
 async function doApprove(r) {
-  saving.value = true;
+  saving.value = true
   try {
-    const data = await api.patch(`/attendance/${r.id}/approve`);
+    const data = await approveAttendanceApi(r.id)
     if (data.success) {
-      toast('success', data.message);
-      await fetchRecords();
+      toast('success', data.message)
+      await fetchRecords()
     } else {
-      toast('error', data.message);
+      toast('error', data.message)
     }
   } finally {
-    saving.value = false;
+    saving.value = false
   }
 }
 
 function openRejectModal(r) {
-  rejectTarget.value = r;
-  rejectReason.value = '';
-  rejectError.value = '';
-  showRejectModal.value = true;
+  rejectTarget.value = r
+  rejectReason.value = ''
+  rejectError.value = ''
+  showRejectModal.value = true
 }
 
 async function doReject() {
-  if (!rejectReason.value.trim()) { rejectError.value = '請填寫退回原因'; return; }
-  saving.value = true;
+  if (!rejectReason.value.trim()) { rejectError.value = '請填寫拒絕原因'; return }
+  saving.value = true
   try {
-    const data = await api.patch(`/attendance/${rejectTarget.value.id}/reject`, {
-      reject_reason: rejectReason.value
-    });
+    const data = await rejectAttendanceApi(rejectTarget.value.id, {
+      reject_reason: rejectReason.value,
+    })
     if (data.success) {
-      toast('warning', data.message);
-      showRejectModal.value = false;
-      await fetchRecords();
+      toast('warning', data.message)
+      showRejectModal.value = false
+      await fetchRecords()
     } else {
-      rejectError.value = data.message;
+      rejectError.value = data.message
     }
   } finally {
-    saving.value = false;
+    saving.value = false
   }
 }
 
 onMounted(async () => {
-  pageLoading.value = true;
-  await fetchRecords();
-  pageLoading.value = false;
-});
+  pageLoading.value = true
+  await fetchRecords()
+  pageLoading.value = false
+})
 </script>
 
 <template>

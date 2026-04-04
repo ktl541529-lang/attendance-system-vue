@@ -1,109 +1,114 @@
 ﻿<script setup>
-import { ref, onMounted } from 'vue';
-import api from '../api/index.js';
-import AppLayout from '@/components/layout/AppLayout.vue';
+import { ref, onMounted } from 'vue'
+import {
+  getUsersApi,
+  createUserApi,
+  updateUserApi,
+  deleteUserApi,
+} from '@/api/users.js'
+import AppLayout from '@/components/layout/AppLayout.vue'
 
-const users = ref([]);
-const pageLoading = ref(false);
-const saving = ref(false);
-const toasts = ref([]);
-let toastCounter = 0;
+const users = ref([])
+const pageLoading = ref(false)
+const saving = ref(false)
+const toasts = ref([])
+let toastCounter = 0
 
-const showModal = ref(false);
-const editingUser = ref(null);
-const showDeleteModal = ref(false);
-const deleteTarget = ref(null);
+const showModal = ref(false)
+const editingUser = ref(null)
+const showDeleteModal = ref(false)
+const deleteTarget = ref(null)
 
-const form = ref({ username: '', name: '', password: '', dept: '', role: 'employee' });
-const formError = ref('');
+const form = ref({ username: '', name: '', password: '', dept: '', role: 'employee' })
+const formError = ref('')
 
-const depts = ['人資部', '護理部', '急診部', '放射科', '行政部', '其他'];
+const depts = ['工程部', '設計部', '行銷部', '業務部', '人資部', '財務']
 
 function toast(type, msg) {
-  const id = ++toastCounter;
-  toasts.value.push({ id, type, msg });
-  setTimeout(() => { toasts.value = toasts.value.filter(t => t.id !== id); }, 3500);
+  const id = ++toastCounter
+  toasts.value.push({ id, type, msg })
+  setTimeout(() => { toasts.value = toasts.value.filter(t => t.id !== id) }, 3500)
 }
 
 function openNewModal() {
-  editingUser.value = null;
-  form.value = { username: '', name: '', password: '', dept: '', role: 'employee' };
-  formError.value = '';
-  showModal.value = true;
+  editingUser.value = null
+  form.value = { username: '', name: '', password: '', dept: '', role: 'employee' }
+  formError.value = ''
+  showModal.value = true
 }
 
 function openEditModal(u) {
-  editingUser.value = u;
-  form.value = { username: u.account, name: u.name, password: '', dept: u.dept, role: u.role };
-  formError.value = '';
-  showModal.value = true;
+  editingUser.value = u
+  form.value = { username: u.account, name: u.name, password: '', dept: u.dept, role: u.role }
+  formError.value = ''
+  showModal.value = true
 }
 
 function validate() {
-  if (!form.value.username) return '請填寫帳號';
-  if (!form.value.name) return '請填寫姓名';
-  if (!editingUser.value && !form.value.password) return '請填寫密碼';
-  if (!form.value.dept) return '請選擇部門';
-  return '';
+  if (!form.value.username) return '請填寫帳號'
+  if (!form.value.name) return '請填寫姓名'
+  if (!editingUser.value && !form.value.password) return '請填寫密碼'
+  if (!form.value.dept) return '請選擇部門'
+  return ''
 }
 
 async function onSubmit() {
-  formError.value = validate();
-  if (formError.value) return;
-  saving.value = true;
+  formError.value = validate()
+  if (formError.value) return
+  saving.value = true
   try {
-    const payload = { ...form.value };
-    if (!payload.password) delete payload.password;
-    let data;
+    const payload = { ...form.value }
+    if (!payload.password) delete payload.password
+    let data
     if (editingUser.value) {
-      data = await api.put(`/users/${editingUser.value.id}`, payload);
+      data = await updateUserApi(editingUser.value.id, payload)
     } else {
-      data = await api.post('/users', payload);
+      data = await createUserApi(payload)
     }
     if (data.success) {
-      toast('success', data.message);
-      showModal.value = false;
-      await fetchUsers();
+      toast('success', data.message)
+      showModal.value = false
+      await fetchUsers()
     } else {
-      formError.value = data.message;
+      formError.value = data.message
     }
   } finally {
-    saving.value = false;
+    saving.value = false
   }
 }
 
 function confirmDelete(u) {
-  deleteTarget.value = u;
-  showDeleteModal.value = true;
+  deleteTarget.value = u
+  showDeleteModal.value = true
 }
 
 async function doDelete() {
-  saving.value = true;
+  saving.value = true
   try {
-    const data = await api.delete(`/users/${deleteTarget.value.id}`);
+    const data = await deleteUserApi(deleteTarget.value.id)
     if (data.success) {
-      toast('success', data.message);
-      showDeleteModal.value = false;
-      await fetchUsers();
+      toast('success', data.message)
+      showDeleteModal.value = false
+      await fetchUsers()
     } else {
-      toast('error', data.message);
-      showDeleteModal.value = false;
+      toast('error', data.message)
+      showDeleteModal.value = false
     }
   } finally {
-    saving.value = false;
+    saving.value = false
   }
 }
 
 async function fetchUsers() {
-  const data = await api.get('/users');
-  if (data.success) users.value = data.data;
+  const data = await getUsersApi()
+  if (data.success) users.value = data.data
 }
 
 onMounted(async () => {
-  pageLoading.value = true;
-  await fetchUsers();
-  pageLoading.value = false;
-});
+  pageLoading.value = true
+  await fetchUsers()
+  pageLoading.value = false
+})
 </script>
 
 <template>

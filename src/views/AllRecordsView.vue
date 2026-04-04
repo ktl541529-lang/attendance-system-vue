@@ -1,91 +1,75 @@
 ﻿<script setup>
-import { ref, onMounted } from 'vue';
-import api from '../api/index.js';
-import AppLayout from '@/components/layout/AppLayout.vue';
+import { ref, onMounted } from 'vue'
+import { getAttendanceApi } from '@/api/attendance.js'
+import AppLayout from '@/components/layout/AppLayout.vue'
+import { fmtDate, fmtDay, statusBadge, statusLabel } from '@/utils/format.js'
 
-const records = ref([]);
-const pageLoading = ref(false);
-const toasts = ref([]);
-let toastCounter = 0;
+const records = ref([])
+const pageLoading = ref(false)
+const toasts = ref([])
+let toastCounter = 0
 
-const filter = ref({ keyword: '', status: '', type: '', date_from: '', date_to: '' });
-const leaveTypes = ['特休', '病假', '事假', '公假', '育嬰留停', '加班補休', '其他'];
-const pagination = ref({ total: 0, page: 1, limit: 20, totalPages: 1 });
-
-function statusBadge(s) {
-  return { pending: 'badge-pending', approved: 'badge-approved', rejected: 'badge-rejected' }[s];
-}
-function statusLabel(s) {
-  return { pending: '申請中', approved: '已核准', rejected: '已退回' }[s] || s;
-}
-function fmtDate(d) {
-  return d ? new Date(d).toLocaleString('zh-TW', {
-    year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit'
-  }).replace(/\//g, '-') : '—';
-}
-function fmtDay(d) { return d ? d.split('T')[0] : '—'; }
+const filter = ref({ keyword: '', status: '', type: '', date_from: '', date_to: '' })
+const leaveTypes = ['事假', '病假', '年假', '喪假', '公傷假', '生理假', '其他']
+const pagination = ref({ total: 0, page: 1, limit: 20, totalPages: 1 })
 
 function toast(type, msg) {
-  const id = ++toastCounter;
-  toasts.value.push({ id, type, msg });
-  setTimeout(() => { toasts.value = toasts.value.filter(t => t.id !== id); }, 3500);
+  const id = ++toastCounter
+  toasts.value.push({ id, type, msg })
+  setTimeout(() => { toasts.value = toasts.value.filter(t => t.id !== id) }, 3500)
 }
 
 async function fetchRecords(page = 1) {
-  const params = {
-    page,
-    limit: pagination.value.limit,
-  };
-  if (filter.value.keyword) params.keyword = filter.value.keyword;
-  if (filter.value.status) params.status = filter.value.status;
-  if (filter.value.type) params.type = filter.value.type;
-  if (filter.value.date_from) params.date_from = filter.value.date_from;
-  if (filter.value.date_to) params.date_to = filter.value.date_to;
+  const params = { page, limit: pagination.value.limit }
+  if (filter.value.keyword) params.keyword = filter.value.keyword
+  if (filter.value.status) params.status = filter.value.status
+  if (filter.value.type) params.type = filter.value.type
+  if (filter.value.date_from) params.date_from = filter.value.date_from
+  if (filter.value.date_to) params.date_to = filter.value.date_to
 
-  const data = await api.get('/attendance', { params });
+  const data = await getAttendanceApi(params)
   if (data.success) {
-    records.value = data.data;
-    pagination.value = { ...pagination.value, ...data.pagination, page };
+    records.value = data.data
+    pagination.value = { ...pagination.value, ...data.pagination, page }
   }
 }
 
-let searchTimer = null;
+let searchTimer = null
 function debounceSearch() {
-  clearTimeout(searchTimer);
-  searchTimer = setTimeout(() => fetchRecords(1), 400);
+  clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => fetchRecords(1), 400)
 }
 
 function resetFilter() {
-  filter.value = { keyword: '', status: '', type: '', date_from: '', date_to: '' };
-  fetchRecords(1);
+  filter.value = { keyword: '', status: '', type: '', date_from: '', date_to: '' }
+  fetchRecords(1)
 }
 
 function exportCSV() {
-  if (!records.value.length) { toast('warning', '目前沒有資料可以匯出'); return; }
-  const header = ['編號', '申請人', '部門', '類型', '開始日期', '結束日期', '事由', '狀態', '退回原因', '申請時間'];
+  if (!records.value.length) { toast('warning', '目前沒有資料可匯出'); return }
+  const header = ['編號', '申請人', '部門', '類型', '開始日期', '結束日期', '原因', '狀態', '拒絕原因', '建立時間']
   const rows = records.value.map(r => [
     r.id, r.user_name, r.dept, r.type,
     fmtDay(r.start_date), fmtDay(r.end_date),
     `"${r.reason}"`, statusLabel(r.status),
-    r.reject_reason || '', fmtDate(r.created_at)
-  ]);
-  const csv = [header, ...rows].map(r => r.join(',')).join('\n');
-  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `出勤記錄_${new Date().toLocaleDateString('zh-TW').replace(/\//g, '')}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
-  toast('success', 'CSV 匯出成功');
+    r.reject_reason || '', fmtDate(r.created_at),
+  ])
+  const csv = [header, ...rows].map(r => r.join(',')).join('\n')
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `出勤紀錄_${new Date().toLocaleDateString('zh-TW').replace(/\//g, '')}.csv`
+  a.click()
+  URL.revokeObjectURL(url)
+  toast('success', 'CSV 匯出成功')
 }
 
 onMounted(async () => {
-  pageLoading.value = true;
-  await fetchRecords();
-  pageLoading.value = false;
-});
+  pageLoading.value = true
+  await fetchRecords()
+  pageLoading.value = false
+})
 </script>
 
 <template>

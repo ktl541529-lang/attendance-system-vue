@@ -1,8 +1,9 @@
 ﻿<script setup>
 import { ref, computed, onMounted } from 'vue';
 import { useAuthStore } from '../stores/auth.js';
-import api from '@/api/index.js';
-import AppLayout from '@/components/layout/AppLayout.vue';
+import { getAttendanceApi } from '@/api/attendance.js'
+import AppLayout from '@/components/layout/AppLayout.vue'
+import { fmtDate, fmtDay, statusBadge, statusLabel } from '@/utils/format.js'
 import { Pie, Bar, Line } from 'vue-chartjs';
 import {
   Chart as ChartJS,
@@ -36,10 +37,6 @@ const allRecords = ref([]);
 const stats = ref({ total: 0, pending: 0, approved: 0, rejected: 0 });
 const pendingCount = ref(0);
 const pageLoading = ref(false);
-
-function fmtDay(d) {
-  return d ? d.split('T')[0] : '';
-}
 
 // ── 一般員工圖表資料 ──────────────────────────
 const myStatusChart = computed(() => ({
@@ -242,36 +239,12 @@ const lineOptions = (title) => ({
   scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } },
 });
 
-function statusBadge(s) {
-  return {
-    pending: 'badge-pending',
-    approved: 'badge-approved',
-    rejected: 'badge-rejected',
-  }[s];
-}
-function statusLabel(s) {
-  return { pending: '申請中', approved: '已核准', rejected: '已退回' }[s] || s;
-}
-function fmtDate(d) {
-  return d
-    ? new Date(d)
-        .toLocaleString('zh-TW', {
-          year: 'numeric',
-          month: '2-digit',
-          day: '2-digit',
-          hour: '2-digit',
-          minute: '2-digit',
-        })
-        .replace(/\//g, '-')
-    : '—';
-}
-
 onMounted(async () => {
   pageLoading.value = true;
   const [myData, pendingData] = await Promise.all([
-    api.get('/attendance'),
-    api.get('/attendance', { params: { status: 'pending', limit: 1 } }),
-  ]);
+  getAttendanceApi({}),
+  getAttendanceApi({ status: 'pending', limit: 1 }),
+])
   if (myData.success) records.value = myData.data;
   stats.value = {
     total: myData.pagination?.total || records.value.length,

@@ -1,126 +1,116 @@
 ﻿<script setup>
-import { ref, onMounted } from 'vue';
-import { useAuthStore } from '../stores/auth.js';
-import api from '../api/index.js';
-import AppLayout from '@/components/layout/AppLayout.vue';
-import FormModal from '@/components/ui/FormModal.vue';
+import { ref, onMounted } from 'vue'
+import { useAuthStore } from '@/stores/auth.js'
+import {
+  getAttendanceApi,
+  createAttendanceApi,
+  updateAttendanceApi,
+  deleteAttendanceApi,
+} from '@/api/attendance.js'
+import AppLayout from '@/components/layout/AppLayout.vue'
+import FormModal from '@/components/ui/FormModal.vue'
+import { fmtDate, fmtDay, statusBadge, statusLabel } from '@/utils/format.js'
 
-const auth = useAuthStore();
+const auth = useAuthStore()
 
-const records = ref([]);
-const pageLoading = ref(false);
-const showFormModal = ref(false);
-const editingRecord = ref(null);
-const showDeleteModal = ref(false);
-const deleteTarget = ref(null);
-const saving = ref(false);
-const toasts = ref([]);
-let toastCounter = 0;
+const records = ref([])
+const pageLoading = ref(false)
+const showFormModal = ref(false)
+const editingRecord = ref(null)
+const showDeleteModal = ref(false)
+const deleteTarget = ref(null)
+const saving = ref(false)
+const toasts = ref([])
+let toastCounter = 0
 
-const filter = ref({ keyword: '', status: '', type: '', date_from: '', date_to: '' });
-const leaveTypes = ['特休', '病假', '事假', '公假', '育嬰留停', '加班補休', '其他'];
+const filter = ref({ keyword: '', status: '', type: '', date_from: '', date_to: '' })
+const leaveTypes = ['事假', '病假', '年假', '喪假', '公傷假', '生理假', '其他']
 
-let searchTimer = null;
-
-function statusBadge(s) {
-  return { pending: 'badge-pending', approved: 'badge-approved', rejected: 'badge-rejected' }[s];
-}
-function statusLabel(s) {
-  return { pending: '申請中', approved: '已核准', rejected: '已退回' }[s] || s;
-}
-function fmtDate(d) {
-  return d ? new Date(d).toLocaleString('zh-TW', {
-    year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit'
-  }).replace(/\//g, '-') : '—';
-}
-function fmtDay(d) {
-  return d ? d.split('T')[0] : '—';
-}
+let searchTimer = null
 
 function toast(type, msg) {
-  const id = ++toastCounter;
-  toasts.value.push({ id, type, msg });
-  setTimeout(() => { toasts.value = toasts.value.filter(t => t.id !== id); }, 3500);
+  const id = ++toastCounter
+  toasts.value.push({ id, type, msg })
+  setTimeout(() => { toasts.value = toasts.value.filter(t => t.id !== id) }, 3500)
 }
 
 async function fetchRecords() {
-  const params = new URLSearchParams();
-  if (filter.value.keyword) params.set('keyword', filter.value.keyword);
-  if (filter.value.status) params.set('status', filter.value.status);
-  if (filter.value.type) params.set('type', filter.value.type);
-  if (filter.value.date_from) params.set('date_from', filter.value.date_from);
-  if (filter.value.date_to) params.set('date_to', filter.value.date_to);
-  const data = await api.get(`/attendance?${params}`);
-  if (data.success) records.value = data.data;
+  const params = {}
+  if (filter.value.keyword) params.keyword = filter.value.keyword
+  if (filter.value.status) params.status = filter.value.status
+  if (filter.value.type) params.type = filter.value.type
+  if (filter.value.date_from) params.date_from = filter.value.date_from
+  if (filter.value.date_to) params.date_to = filter.value.date_to
+  const data = await getAttendanceApi(params)
+  if (data.success) records.value = data.data
 }
 
 function debounceSearch() {
-  clearTimeout(searchTimer);
-  searchTimer = setTimeout(() => fetchRecords(), 400);
+  clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => fetchRecords(), 400)
 }
 
 function openNewModal() {
-  editingRecord.value = null;
-  showFormModal.value = true;
+  editingRecord.value = null
+  showFormModal.value = true
 }
 
 function openEditModal(r) {
-  if (r.status !== 'pending') { toast('warning', '僅能編輯申請中的記錄'); return; }
-  editingRecord.value = r;
-  showFormModal.value = true;
+  if (r.status !== 'pending') { toast('warning', '只能編輯待審核的申請'); return }
+  editingRecord.value = r
+  showFormModal.value = true
 }
 
 async function onSaved(formData, done) {
   try {
-    let data;
+    let data
     if (editingRecord.value) {
-      data = await api.put(`/attendance/${editingRecord.value.id}`, formData);
+      data = await updateAttendanceApi(editingRecord.value.id, formData)
     } else {
-      data = await api.post('/attendance', formData);
+      data = await createAttendanceApi(formData)
     }
     if (data.success) {
-      toast('success', data.message);
-      showFormModal.value = false;
-      await fetchRecords();
+      toast('success', data.message)
+      showFormModal.value = false
+      await fetchRecords()
     } else {
-      toast('error', data.message);
+      toast('error', data.message)
     }
   } catch {
-    toast('error', '操作失敗，請確認後端連線');
+    toast('error', '操作失敗，請稍後再試')
   } finally {
-    done();
+    done()
   }
 }
 
 function confirmDelete(r) {
-  if (r.status === 'approved') { toast('error', '已核准的申請不可刪除'); return; }
-  deleteTarget.value = r;
-  showDeleteModal.value = true;
+  if (r.status === 'approved') { toast('error', '已核准的申請無法刪除'); return }
+  deleteTarget.value = r
+  showDeleteModal.value = true
 }
 
 async function doDelete() {
-  saving.value = true;
+  saving.value = true
   try {
-    const data = await api.delete(`/attendance/${deleteTarget.value.id}`);
+    const data = await deleteAttendanceApi(deleteTarget.value.id)
     if (data.success) {
-      toast('success', data.message);
-      showDeleteModal.value = false;
-      await fetchRecords();
+      toast('success', data.message)
+      showDeleteModal.value = false
+      await fetchRecords()
     } else {
-      toast('error', data.message);
-      showDeleteModal.value = false;
+      toast('error', data.message)
+      showDeleteModal.value = false
     }
   } finally {
-    saving.value = false;
+    saving.value = false
   }
 }
 
 onMounted(async () => {
-  pageLoading.value = true;
-  await fetchRecords();
-  pageLoading.value = false;
-});
+  pageLoading.value = true
+  await fetchRecords()
+  pageLoading.value = false
+})
 </script>
 
 <template>
