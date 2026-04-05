@@ -1,15 +1,11 @@
 ﻿<script setup>
 import { ref, onMounted } from 'vue'
-import {
-  getAttendanceApi,
-  approveAttendanceApi,
-  rejectAttendanceApi,
-} from '@/api/attendance.js'
+import { useAttendanceStore } from '@/stores/attendance.js'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import { fmtDate, fmtDay } from '@/utils/format.js'
 
-const records = ref([])
-const pageLoading = ref(false)
+const attendance = useAttendanceStore()
+
 const saving = ref(false)
 const toasts = ref([])
 let toastCounter = 0
@@ -20,7 +16,6 @@ const rejectReason = ref('')
 const rejectError = ref('')
 
 const pendingCount = ref(0)
-const filter = ref({ keyword: '', type: '' })
 const leaveTypes = ['事假', '病假', '年假', '喪假', '公傷假', '生理假', '其他']
 
 let searchTimer = null
@@ -33,13 +28,10 @@ function toast(type, msg) {
 
 async function fetchRecords() {
   const params = { status: 'pending' }
-  if (filter.value.keyword) params.keyword = filter.value.keyword
-  if (filter.value.type) params.type = filter.value.type
-  const data = await getAttendanceApi(params)
-  if (data.success) {
-    records.value = data.data
-    pendingCount.value = data.pagination?.total || 0
-  }
+  if (attendance.filter.keyword) params.keyword = attendance.filter.keyword
+  if (attendance.filter.type) params.type = attendance.filter.type
+  const data = await attendance.fetchRecords(params)
+  if (data?.success) pendingCount.value = data.pagination?.total || 0
 }
 
 function debounceSearch() {
@@ -50,7 +42,7 @@ function debounceSearch() {
 async function doApprove(r) {
   saving.value = true
   try {
-    const data = await approveAttendanceApi(r.id)
+    const data = await attendance.approveRecord(r.id)
     if (data.success) {
       toast('success', data.message)
       await fetchRecords()
@@ -73,7 +65,7 @@ async function doReject() {
   if (!rejectReason.value.trim()) { rejectError.value = '請填寫拒絕原因'; return }
   saving.value = true
   try {
-    const data = await rejectAttendanceApi(rejectTarget.value.id, {
+    const data = await attendance.rejectRecord(rejectTarget.value.id, {
       reject_reason: rejectReason.value,
     })
     if (data.success) {
@@ -89,9 +81,7 @@ async function doReject() {
 }
 
 onMounted(async () => {
-  pageLoading.value = true
   await fetchRecords()
-  pageLoading.value = false
 })
 </script>
 
@@ -116,15 +106,15 @@ onMounted(async () => {
 
     <div class="card">
       <div class="filter-bar">
-        <input class="form-control" v-model="filter.keyword"
+        <input class="form-control" v-model="attendance.filter.keyword"
           placeholder="🔍 搜尋員工、事由..." @input="debounceSearch" />
-        <select class="form-control" v-model="filter.type" @change="fetchRecords">
+        <select class="form-control" v-model="attendance.filter.type" @change="fetchRecords">
           <option value="">全部類型</option>
           <option v-for="t in leaveTypes" :key="t" :value="t">{{ t }}</option>
         </select>
       </div>
 
-      <div v-if="pageLoading" style="text-align:center;padding:40px;color:var(--text-3)">
+      <div v-if="attendance.loading" style="text-align:center;padding:40px;color:var(--text-3)">
         <span class="loading-spinner" style="width:24px;height:24px"></span>
       </div>
 
@@ -143,12 +133,12 @@ onMounted(async () => {
             </tr>
           </thead>
           <tbody>
-            <tr v-if="records.length === 0">
+            <tr v-if="attendance.records.length === 0">
               <td colspan="8">
                 <div class="empty-state"><p>目前沒有待審核的申請</p></div>
               </td>
             </tr>
-            <tr v-for="r in records" :key="r.id">
+            <tr v-for="r in attendance.records" :key="r.id">
               <td class="text-mono text-sm">#{{ r.id }}</td>
               <td><strong>{{ r.user_name }}</strong></td>
               <td class="text-sm">{{ r.dept }}</td>

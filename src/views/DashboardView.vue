@@ -240,24 +240,24 @@ const lineOptions = (title) => ({
 });
 
 onMounted(async () => {
-  pageLoading.value = true;
+  pageLoading.value = true
   const [myData, pendingData] = await Promise.all([
-  getAttendanceApi({}),
-  getAttendanceApi({ status: 'pending', limit: 1 }),
-])
-  if (myData.success) records.value = myData.data;
+    getAttendanceApi({}),
+    getAttendanceApi({ status: 'pending', limit: 1 }),
+  ])
+  if (myData.success) records.value = myData.data
   stats.value = {
     total: myData.pagination?.total || records.value.length,
     pending: records.value.filter((r) => r.status === 'pending').length,
     approved: records.value.filter((r) => r.status === 'approved').length,
     rejected: records.value.filter((r) => r.status === 'rejected').length,
-  };
-  if (auth.isAdmin) {
-    pendingCount.value = pendingData.pagination?.total || 0;
-    allRecords.value = records.value;
   }
-  pageLoading.value = false;
-});
+  if (auth.isAdmin) {
+    pendingCount.value = pendingData.pagination?.total || 0
+    allRecords.value = records.value
+  }
+  pageLoading.value = false
+})
 </script>
 
 <template>

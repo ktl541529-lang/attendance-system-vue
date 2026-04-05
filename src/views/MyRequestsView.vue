@@ -1,20 +1,13 @@
 ﻿<script setup>
-import { ref, onMounted } from 'vue'
-import { useAuthStore } from '@/stores/auth.js'
-import {
-  getAttendanceApi,
-  createAttendanceApi,
-  updateAttendanceApi,
-  deleteAttendanceApi,
-} from '@/api/attendance.js'
+import { onMounted } from 'vue'
+import { useAttendanceStore } from '@/stores/attendance.js'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import FormModal from '@/components/ui/FormModal.vue'
 import { fmtDate, fmtDay, statusBadge, statusLabel } from '@/utils/format.js'
+import { ref } from 'vue'
 
-const auth = useAuthStore()
+const attendance = useAttendanceStore()
 
-const records = ref([])
-const pageLoading = ref(false)
 const showFormModal = ref(false)
 const editingRecord = ref(null)
 const showDeleteModal = ref(false)
@@ -23,7 +16,6 @@ const saving = ref(false)
 const toasts = ref([])
 let toastCounter = 0
 
-const filter = ref({ keyword: '', status: '', type: '', date_from: '', date_to: '' })
 const leaveTypes = ['事假', '病假', '年假', '喪假', '公傷假', '生理假', '其他']
 
 let searchTimer = null
@@ -35,14 +27,14 @@ function toast(type, msg) {
 }
 
 async function fetchRecords() {
+  const f = attendance.filter
   const params = {}
-  if (filter.value.keyword) params.keyword = filter.value.keyword
-  if (filter.value.status) params.status = filter.value.status
-  if (filter.value.type) params.type = filter.value.type
-  if (filter.value.date_from) params.date_from = filter.value.date_from
-  if (filter.value.date_to) params.date_to = filter.value.date_to
-  const data = await getAttendanceApi(params)
-  if (data.success) records.value = data.data
+  if (f.keyword) params.keyword = f.keyword
+  if (f.status) params.status = f.status
+  if (f.type) params.type = f.type
+  if (f.date_from) params.date_from = f.date_from
+  if (f.date_to) params.date_to = f.date_to
+  await attendance.fetchRecords(params)
 }
 
 function debounceSearch() {
@@ -65,9 +57,9 @@ async function onSaved(formData, done) {
   try {
     let data
     if (editingRecord.value) {
-      data = await updateAttendanceApi(editingRecord.value.id, formData)
+      data = await attendance.updateRecord(editingRecord.value.id, formData)
     } else {
-      data = await createAttendanceApi(formData)
+      data = await attendance.createRecord(formData)
     }
     if (data.success) {
       toast('success', data.message)
@@ -92,7 +84,7 @@ function confirmDelete(r) {
 async function doDelete() {
   saving.value = true
   try {
-    const data = await deleteAttendanceApi(deleteTarget.value.id)
+    const data = await attendance.deleteRecord(deleteTarget.value.id)
     if (data.success) {
       toast('success', data.message)
       showDeleteModal.value = false
@@ -107,9 +99,7 @@ async function doDelete() {
 }
 
 onMounted(async () => {
-  pageLoading.value = true
   await fetchRecords()
-  pageLoading.value = false
 })
 </script>
 
@@ -132,23 +122,23 @@ onMounted(async () => {
 
     <div class="card">
       <div class="filter-bar">
-        <input class="form-control" v-model="filter.keyword"
+        <input class="form-control" v-model="attendance.filter.keyword"
           placeholder="🔍 關鍵字搜尋..." @input="debounceSearch" />
-        <select class="form-control" v-model="filter.status" @change="fetchRecords">
+        <select class="form-control" v-model="attendance.filter.status" @change="fetchRecords">
           <option value="">全部狀態</option>
           <option value="pending">申請中</option>
           <option value="approved">已核准</option>
           <option value="rejected">已退回</option>
         </select>
-        <select class="form-control" v-model="filter.type" @change="fetchRecords">
+        <select class="form-control" v-model="attendance.filter.type" @change="fetchRecords">
           <option value="">全部類型</option>
           <option v-for="t in leaveTypes" :key="t" :value="t">{{ t }}</option>
         </select>
-        <input type="date" class="form-control" v-model="filter.date_from" @change="fetchRecords" />
-        <input type="date" class="form-control" v-model="filter.date_to" @change="fetchRecords" />
+        <input type="date" class="form-control" v-model="attendance.filter.date_from" @change="fetchRecords" />
+        <input type="date" class="form-control" v-model="attendance.filter.date_to" @change="fetchRecords" />
       </div>
 
-      <div v-if="pageLoading" style="text-align:center;padding:40px;color:var(--text-3)">
+      <div v-if="attendance.loading" style="text-align:center;padding:40px;color:var(--text-3)">
         <span class="loading-spinner" style="width:24px;height:24px"></span>
       </div>
 
@@ -168,10 +158,10 @@ onMounted(async () => {
             </tr>
           </thead>
           <tbody>
-            <tr v-if="records.length === 0">
+            <tr v-if="attendance.records.length === 0">
               <td colspan="9"><div class="empty-state"><p>查無符合條件的申請記錄</p></div></td>
             </tr>
-            <tr v-for="r in records" :key="r.id">
+            <tr v-for="r in attendance.records" :key="r.id">
               <td class="text-mono text-sm">#{{ r.id }}</td>
               <td><span class="chip">{{ r.type }}</span></td>
               <td class="text-mono text-sm">{{ fmtDay(r.start_date) }}</td>

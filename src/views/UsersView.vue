@@ -1,15 +1,10 @@
 ﻿<script setup>
 import { ref, onMounted } from 'vue'
-import {
-  getUsersApi,
-  createUserApi,
-  updateUserApi,
-  deleteUserApi,
-} from '@/api/users.js'
+import { useUsersStore } from '@/stores/users.js'
 import AppLayout from '@/components/layout/AppLayout.vue'
 
-const users = ref([])
-const pageLoading = ref(false)
+const usersStore = useUsersStore()
+
 const saving = ref(false)
 const toasts = ref([])
 let toastCounter = 0
@@ -61,14 +56,14 @@ async function onSubmit() {
     if (!payload.password) delete payload.password
     let data
     if (editingUser.value) {
-      data = await updateUserApi(editingUser.value.id, payload)
+      data = await usersStore.updateUser(editingUser.value.id, payload)
     } else {
-      data = await createUserApi(payload)
+      data = await usersStore.createUser(payload)
     }
     if (data.success) {
       toast('success', data.message)
       showModal.value = false
-      await fetchUsers()
+      await usersStore.fetchUsers()
     } else {
       formError.value = data.message
     }
@@ -85,11 +80,11 @@ function confirmDelete(u) {
 async function doDelete() {
   saving.value = true
   try {
-    const data = await deleteUserApi(deleteTarget.value.id)
+    const data = await usersStore.deleteUser(deleteTarget.value.id)
     if (data.success) {
       toast('success', data.message)
       showDeleteModal.value = false
-      await fetchUsers()
+      await usersStore.fetchUsers()
     } else {
       toast('error', data.message)
       showDeleteModal.value = false
@@ -99,15 +94,8 @@ async function doDelete() {
   }
 }
 
-async function fetchUsers() {
-  const data = await getUsersApi()
-  if (data.success) users.value = data.data
-}
-
 onMounted(async () => {
-  pageLoading.value = true
-  await fetchUsers()
-  pageLoading.value = false
+  await usersStore.fetchUsers()
 })
 </script>
 
@@ -122,13 +110,13 @@ onMounted(async () => {
     <div class="page-header">
       <div>
         <div class="page-title">員工帳號管理</div>
-        <div class="page-desc">共 {{ users.length }} 位員工</div>
+        <div class="page-desc">共 {{ usersStore.users.length }} 位員工</div>
       </div>
       <button class="btn btn-primary" @click="openNewModal">+ 新增員工</button>
     </div>
 
     <div class="card">
-      <div v-if="pageLoading" style="text-align:center;padding:40px">
+      <div v-if="usersStore.loading" style="text-align:center;padding:40px">
         <span class="loading-spinner" style="width:24px;height:24px"></span>
       </div>
 
@@ -145,10 +133,10 @@ onMounted(async () => {
             </tr>
           </thead>
           <tbody>
-            <tr v-if="users.length === 0">
+            <tr v-if="usersStore.users.length === 0">
               <td colspan="6"><div class="empty-state"><p>目前沒有員工資料</p></div></td>
             </tr>
-            <tr v-for="u in users" :key="u.id">
+            <tr v-for="u in usersStore.users" :key="u.id">
               <td class="text-mono text-sm">#{{ u.id }}</td>
               <td class="text-mono">{{ u.account }}</td>
               <td><strong>{{ u.name }}</strong></td>
