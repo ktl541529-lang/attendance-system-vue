@@ -53,6 +53,7 @@ export const useAuthStore = defineStore('auth', () => {
   return {
     currentUser,
     token,
+    isInitialized,
     isAdmin,
     isLoggedIn,
     isReady,
