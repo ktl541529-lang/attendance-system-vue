@@ -9,26 +9,29 @@ const pageLoading = ref(false);
 const pagination = ref({ total: 0, page: 1, limit: 20, totalPages: 1 });
 
 async function fetchLogs(page = 1) {
+  pageLoading.value = true;
   const params = { page, limit: pagination.value.limit };
-  const data = await getAuditLogsApi(params);
-  if (data.success) {
-    logs.value = data.data;
-    const total = data.pagination?.total || 0;
-    const limit = pagination.value.limit;
-    pagination.value = {
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
-    };
+  try {
+    const data = await getAuditLogsApi(params);
+    if (data.success) {
+      logs.value = data.data;
+      const total = data.pagination?.total || 0;
+      const limit = pagination.value.limit;
+      pagination.value = {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      };
+    }
+  } catch (err) {
+    console.error('fetchLogs error:', err);
+  } finally {
+    pageLoading.value = false;
   }
 }
 
-onMounted(async () => {
-  pageLoading.value = true;
-  await fetchLogs();
-  pageLoading.value = false;
-});
+onMounted(() => fetchLogs());
 </script>
 
 <template>
@@ -52,7 +55,6 @@ onMounted(async () => {
               <th>編號</th>
               <th>操作者</th>
               <th>動作</th>
-              <th>對象</th>
               <th>詳情</th>
               <th>IP</th>
               <th>時間</th>
@@ -61,6 +63,11 @@ onMounted(async () => {
           <tbody>
             <tr v-if="logs.length === 0">
               <td colspan="7">
+                <div class="empty-state"><p>目前沒有操作紀錄</p></div>
+              </td>
+            </tr>
+            <tr v-if="logs.length === 0">
+              <td colspan="6">
                 <div class="empty-state"><p>目前沒有操作紀錄</p></div>
               </td>
             </tr>
@@ -76,9 +83,6 @@ onMounted(async () => {
                 <span class="text-sm" style="color: var(--text-2)">{{
                   log.action
                 }}</span>
-              </td>
-              <td class="text-mono text-sm">
-                {{ log.target_id ? '#' + log.target_id : '—' }}
               </td>
               <td class="text-sm" style="max-width: 300px">
                 {{ log.detail || '—' }}
