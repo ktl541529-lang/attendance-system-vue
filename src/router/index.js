@@ -1,6 +1,5 @@
-
-import { useAuthStore } from '../stores/auth.js';
-import { createRouter, createWebHashHistory } from 'vue-router';
+import { useAuthStore } from '../stores/auth.js'
+import { createRouter, createWebHashHistory } from 'vue-router'
 
 const routes = [
   {
@@ -39,26 +38,25 @@ const routes = [
   {
     path: '/logs',
     component: () => import('../views/LogsView.vue'),
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, adminOnly: true }
   },
-];
+  {
+  path: '/my-logs',
+  component: () => import('../views/MyLogsView.vue'),
+  meta: { requiresAuth: true }
+},
+]
 
 const router = createRouter({
   history: createWebHashHistory(),
   routes
-});
+})
 
-// 路由守衛
-router.beforeEach(async (to) => {
-  const auth = useAuthStore();
+router.beforeEach((to) => {
+  const auth = useAuthStore()
 
-  if (to.meta.requiresAuth && !auth.isLoggedIn) {
-    return '/login';
-  }
+  if (to.meta.requiresAuth && !auth.isLoggedIn) return '/login'
+  if (to.meta.adminOnly && !auth.isAdmin) return '/dashboard'
+})
 
-  if (to.meta.adminOnly && !auth.isAdmin) {
-    return '/dashboard';
-  }
-});
-
-export default router;
+export default router
