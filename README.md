@@ -1,34 +1,36 @@
-# 醫院出勤申請管理系統 ── Vue 3 + Vite 前端
+# 醫院出勤申請管理系統 ── Vue 3 前端
 
 > 🔗 **本專案為三版本系列的一部分**
 >
 > | 版本 | Repo | 技術定位 |
 > |------|------|----------|
 > | v1 | `attendance-system` | 後端核心，Node.js + Express + PostgreSQL |
-> | v2 ✦ **當前版本** | `attendance-system-vue` | 前端初版，Vue 3 + Vite |
-> | v3 | `attendance-system-ts` | 前端重構版，Angular 17+ + TypeScript |
+> | v2 | `attendance-system-ts` | Angular 前端，TypeScript 技術探索 |
+> | v3 ✦ **當前版本** | `attendance-system-vue` | Vue 3 前端，主力版本，持續迭代中 |
 
 ---
 
 ## 📌 Project Overview
 
-這個版本的出發點是從 V1 純 CDN 的單頁 HTML 演進而來：**CDN 版本缺乏元件化、狀態管理分散、路由保護脆弱，隨著功能增加維護成本快速上升。**
+這個專案的出發點是從 V1 純 CDN 的單頁 HTML 演進而來：**CDN 版本缺乏元件化、狀態管理分散、路由保護脆弱，隨著功能增加維護成本快速上升。**
 
-V2 選擇以 Vue 3 + Vite 重寫，針對以下三個問題做出工程決策：
+V3 選擇以 Vue 3 + Vite 重寫，並持續透過工程化重構提升可維護性：
 
-| 問題（V1 CDN 的限制） | V2 的解法 | 取捨 |
+| 問題（V1 CDN 的限制） | V3 的解法 | 取捨 |
 |---|---|---|
-| 狀態散落在各個函式，登入資訊靠 localStorage 自行管理 | Pinia Store 集中管理 auth 狀態，並透過 `/api/auth/me` 驗證 token 有效性 | 需要額外一次 API 呼叫，但狀態可靠性大幅提升 |
+| 狀態散落在各個函式，登入資訊靠 localStorage 自行管理 | Pinia Store 集中管理 auth 狀態，透過 `/api/auth/me` 驗證 token 有效性 | 需要額外一次 API 呼叫，但狀態可靠性大幅提升 |
 | 路由保護靠 `v-show` 切換，URL 可直接存取後台頁面 | Vue Router 4 + `beforeEach` Guard，URL 層級的路由保護 | 需要設計 meta 欄位與 Guard 邏輯 |
-| 每支 API 呼叫手動帶 token，401 各自處理 | 統一 `api/index.js` 模組，自動帶 token，401 集中跳轉登出 | 所有 API 呼叫須透過統一模組，不能直接用 fetch |
+| 每支 API 呼叫手動帶 token，401 各自處理 | Axios instance 統一管理，自動帶 token，401 集中跳轉登出 | 所有 API 呼叫須透過統一模組 |
+| API 端點散落各處，View 直接呼叫 axios | API 層按功能域拆分，View 只負責顯示邏輯 | 新增 API 需找對應模組，但職責清楚 |
+| 資料狀態各 View 自己管理，跨頁面不同步 | Pinia Store 集中管理業務資料，UI 狀態留在 View | 需區分哪些狀態該放 Store |
 
 > 🌐 **Live Demo** → [線上展示系統](https://attendance-system-vue-seven.vercel.app)
 
 | 項目 | 說明 |
 |------|------|
 | 前端 | Vercel（Vue 3 + Vite）|
-| 後端 | Render（Node.js，與 v1 共用）|
-| 資料庫 | Supabase（PostgreSQL，與 v1 共用）|
+| 後端 | Render（Node.js + Express）|
+| 資料庫 | Supabase（PostgreSQL）|
 
 **示範帳號**
 
@@ -36,6 +38,8 @@ V2 選擇以 Vue 3 + Vite 重寫，針對以下三個問題做出工程決策：
 |------|------|------|
 | admin | 1234 | 管理者 |
 | emp1  | 1234 | 一般員工 |
+
+> ⚠️ 後端部署於 Render 免費方案，閒置後會休眠。首次存取請稍候 30-60 秒待服務喚醒。
 
 ---
 
@@ -47,7 +51,10 @@ V2 選擇以 Vue 3 + Vite 重寫，針對以下三個問題做出工程決策：
 │                                                     │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐ │
 │  │ Vue Router  │  │ Pinia Store │  │ api/        │ │
-│  │ + Guards    │  │ auth.js     │  │ index.js    │ │
+│  │ + Guards    │  │ auth.js     │  │ client.js   │ │
+│  │             │  │ attendance  │  │ auth.js     │ │
+│  │ requiresAuth│  │ users.js    │  │ attendance  │ │
+│  │ adminOnly   │  │             │  │ logs.js ... │ │
 │  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘ │
 │         │                │                │         │
 │  ┌──────▼────────────────▼────────────────▼───────┐ │
@@ -69,16 +76,14 @@ V2 選擇以 Vue 3 + Vite 重寫，針對以下三個問題做出工程決策：
 
 ```
 ── 請求方向 ──────────────────────────────────────────►
-User Action → Router Guard → View → api 模組 → Backend API
-                  │                    │
-           requiresAuth          自動帶 token
-           adminOnly
-                                          │
-── 回應方向 ◄─────────────────────────────────────────
-         View 直接渲染 ← Pinia Store ← Raw Response
-```
+User Action → Router Guard → View → Pinia Action → api 模組 → Backend API
+                  │                                    │
+           requiresAuth                         自動帶 token
+           adminOnly                            401 集中處理
 
-> ⚠️ **V2 的限制：** View 直接消費 Pinia Store 的原始資料並渲染，資料轉換邏輯混在 View 內。這個問題在 V3 Angular 版本透過 ViewModel 層解決。
+── 回應方向 ◄─────────────────────────────────────────
+         View 渲染 ← Pinia Store ← api 模組 ← Raw Response
+```
 
 ---
 
@@ -86,122 +91,143 @@ User Action → Router Guard → View → api 模組 → Backend API
 
 **員工功能**
 - 登入 / 登出（JWT），自動帶 token、自動處理 401 登出
-- 個人出勤申請統計（圖表）
 - 新增 / 編輯 / 刪除出勤申請
 - 查詢個人申請紀錄
+- 查詢個人操作紀錄（My Logs）
 
 **管理者功能**
 - 全體出勤統計儀表板
 - 審核申請（核准 / 拒絕）
 - 全體申請紀錄查詢
 - 員工帳號管理
-- 操作審計日誌查詢
+- 全體操作審計日誌查詢
 
 **系統特性**
 - Pinia Store 集中管理登入狀態，透過 `/api/auth/me` 驗證 token 有效性
 - Vue Router 4 路由保護，URL 層級攔截未授權存取
-- 統一 API 模組，自動帶 token，401 集中跳轉登出
+- Axios instance 統一管理，自動帶 token，401 集中跳轉登出
+- API 層按功能域拆分（auth / attendance / users / logs）
 - Hash Mode 路由，相容靜態部署環境
-
----
-
-## 🔍 V1 CDN vs V2 Vue 3 差異對照
-
-| 面向 | V1 CDN 舊版作法 | V2 Vue 3 作法 |
-|------|----------------|--------------|
-| 狀態管理 | `token`、`currentUser` 散落各函式 | Pinia Store 集中管理，`/api/auth/me` 驗證有效性 |
-| 路由保護 | `v-show` 切換，URL 可直接存取 | Vue Router 4，URL 層級的 `beforeEach` Guard |
-| 權限判斷 | 無系統性設計，各頁面各自判斷 | `requiresAuth` + `adminOnly` meta 統一管理 |
-| API 管理 | 每支 fetch 手動帶 token | 統一 `api/index.js`，401 集中處理 |
-| 元件結構 | 單一 HTML 檔案，無元件化 | `AppSidebar`、`AppLayout`、`FormModal` 元件化 |
+- fetchMe() 在 router 掛載前完成，確保 guard 執行時使用者資料已就緒
 
 ---
 
 ## 💡 Technical Highlights
 
-### 1. Pinia Store ── 集中管理登入狀態
+### 1. 初始化時序設計 ── fetchMe() 在 main.js 完成
 
-**動機：** V1 CDN 版本的 token 和 currentUser 散落在各個函式，重新整理瀏覽器後狀態是否有效無法確認，只能靠 localStorage 的值猜測。
+**動機：** router guard 執行早於 `App.vue` 的 `onMounted`，若 `fetchMe()` 放在 `onMounted`，admin 重整 adminOnly 頁面時 `isAdmin` 尚未就緒，會被錯誤踢到 dashboard。
 
 **實作：**
 ```javascript
-// stores/auth.js
-export const useAuthStore = defineStore('auth', {
-  state: () => ({ token: null, currentUser: null, isAdmin: false }),
-  actions: {
-    async fetchMe() {
-      const user = await api.get('/auth/me');
-      this.currentUser = user;
-      this.isAdmin = user.role === 'admin';
-    }
-  }
-});
+// main.js
+const pinia = createPinia()
+app.use(pinia)
+
+const { useAuthStore } = await import('./stores/auth.js')
+const auth = useAuthStore()
+
+if (auth.token) await auth.fetchMe()
+else auth.isInitialized = true
+
+app.use(router) // fetchMe 完成後才掛載 router
+app.mount('#app')
 ```
 
-**效果：** 每次頁面載入透過 `/api/auth/me` 驗證 token 是否仍有效，不依賴 localStorage 的值，登入狀態可靠。
+**效果：** guard 執行時 `currentUser` 已就緒，重整頁面不會錯誤跳轉。
 
 ---
 
-### 2. Vue Router Guard ── URL 層級的路由保護
+### 2. Pinia Store ── 集中管理狀態，區分業務資料與 UI 狀態
 
-**動機：** V1 用 `v-show` 切換頁面，使用者可以透過開發者工具直接修改 DOM 看到後台內容；URL 沒有意義，無法分享或書籤特定頁面。
+**動機：** 各 View 自己管理的資料狀態導致跨頁面不同步，且 View 程式碼混雜了資料邏輯與顯示邏輯。
+
+**實作原則：**
+
+| 放 Store | 留在 View |
+|----------|-----------|
+| 出勤紀錄、使用者列表 | `showModal`、`editingRecord` |
+| filter、pagination | 表單暫存資料 |
+| API 呼叫 action | toast、UI 互動狀態 |
+
+```javascript
+// stores/attendance.js
+export const useAttendanceStore = defineStore('attendance', () => {
+  const records = ref([])
+  const loading = ref(false)
+  const filter = ref({ status: '', type: '' })
+
+  async function fetchRecords(params) {
+    loading.value = true
+    try {
+      const data = await getAttendanceApi(params)
+      if (data.success) records.value = data.data
+    } finally {
+      loading.value = false
+    }
+  }
+
+  return { records, loading, filter, fetchRecords }
+})
+```
+
+**效果：** 資料來源單一，多個 View 讀取同一份資料不會不同步；View 程式碼只負責顯示邏輯。
+
+---
+
+### 3. API 分層 ── 按功能域拆分，View 不直接碰 axios
+
+**動機：** 原本 axios instance 和 API function 混在一起，端點字串散落各 View，相同的格式化函式重複出現。
+
+**實作：**
+```
+api/
+├── client.js      ← axios instance + interceptors（自動帶 token、401 處理）
+├── auth.js        ← 認證相關 API
+├── attendance.js  ← 出勤相關 API
+├── users.js       ← 使用者相關 API
+├── logs.js        ← 日誌相關 API
+└── index.js       ← re-export 入口（向下相容）
+```
+
+**效果：** 新增 API 只需改對應檔案，View 完全不知道 axios 的存在。
+
+---
+
+### 4. Vue Router Guard ── URL 層級的路由保護
+
+**動機：** V1 用 `v-show` 切換頁面，使用者可以透過開發者工具直接修改 DOM 看到後台內容。
 
 **實作：**
 ```javascript
 // router/index.js
-router.beforeEach(async (to) => {
-  if (to.meta.requiresAuth && !auth.isLoggedIn) return '/login';
-  if (to.meta.adminOnly && !auth.isAdmin) return '/dashboard';
-});
+router.beforeEach((to) => {
+  const auth = useAuthStore()
+  if (to.meta.requiresAuth && !auth.isLoggedIn) return '/login'
+  if (to.meta.adminOnly && !auth.isAdmin) return '/dashboard'
+})
 ```
 
-**效果：** 未登入直接導回 login，非管理者進入 admin 頁面導回 dashboard；URL 有意義，支援書籤與分享。
+**效果：** 未登入直接導回 login，非管理者進入 admin 頁面導回 dashboard；guard 為純同步，不依賴非同步操作。
 
 ---
 
-### 3. 統一 API 模組 ── Token 注入與 401 集中處理
+### 5. 共用工具層 ── utils/format.js
 
-**動機：** V1 每支 fetch 都要手動帶 `Authorization` header，一旦忘記就會 401；token 過期後各頁面各自處理，行為不一致。
+**動機：** 相同的格式化函式（日期、狀態 badge、操作 label）在四個 View 重複定義，重構過渡期出現識別子衝突錯誤。
 
 **實作：**
 ```javascript
-// api/index.js
-const api = {
-  async request(path, options = {}) {
-    const res = await fetch(`${API_BASE}${path}`, {
-      ...options,
-      headers: {
-        'Authorization': `Bearer ${store.token}`,
-        'Content-Type': 'application/json',
-        ...options.headers,
-      }
-    });
-    if (res.status === 401) {
-      store.logout();
-      router.push('/login');
-    }
-    return res.json();
-  }
-};
+// utils/format.js
+export function fmtDate(d) { ... }      // 格式化完整日期時間
+export function fmtDay(d) { ... }       // 只取日期部分
+export function statusBadge(s) { ... }  // 狀態對應 CSS class
+export function statusLabel(s) { ... }  // 狀態對應中文文字
+export function actionLabel(action) { ... }      // 操作代碼對應中文
+export function actionBadgeClass(action) { ... } // 操作對應 CSS class
 ```
 
-**效果：** 所有 API 呼叫透過統一模組，token 自動注入，401 統一登出跳轉，不需要在每個 View 重複處理。
-
----
-
-### 4. 元件化架構
-
-**動機：** V1 所有邏輯在單一 HTML 檔案，新增功能需要在一個越來越大的檔案裡找位置，維護成本高。
-
-**實作：**
-```
-AppLayout（登入後外框）
-  ├── AppSidebar（導覽選單，依角色顯示不同項目）
-  ├── <slot>（各 View 的內容區塊）
-  └── FormModal（新增 / 編輯申請 Modal）
-```
-
-**效果：** 共用 UI 邏輯集中在元件，各 View 只負責自己的業務邏輯；新增頁面只需新增 View，不需動共用結構。
+**效果：** 相同邏輯只寫一次，格式變更只需改一個地方。
 
 ---
 
@@ -212,7 +238,7 @@ AppLayout（登入後外框）
 | 前端框架 | Vue 3 Composition API，Vite |
 | 狀態管理 | Pinia |
 | 路由 | Vue Router 4（Hash Mode）|
-| HTTP 管理 | 統一 Fetch API 模組，401 自動登出 |
+| HTTP 管理 | Axios，統一 instance + interceptors |
 | 樣式 | 原生 CSS |
 | 部署 | Vercel |
 
@@ -223,23 +249,38 @@ AppLayout（登入後外框）
 ```
 src/
 ├── api/
-│   └── index.js              # 統一 API 模組，自動帶 token，401 跳轉登出
-├── stores/
-│   └── auth.js               # Pinia store，login / logout / fetchMe
-├── router/
-│   └── index.js              # Vue Router，requiresAuth + adminOnly Guard
+│   ├── client.js        # axios instance + interceptors
+│   ├── auth.js          # 認證相關 API
+│   ├── attendance.js    # 出勤相關 API
+│   ├── users.js         # 使用者相關 API
+│   ├── logs.js          # 日誌相關 API
+│   └── index.js         # re-export 入口
 ├── components/
-│   ├── AppSidebar.vue        # 側邊導覽，依角色顯示選單
-│   ├── AppLayout.vue         # 登入後版面框架
-│   └── FormModal.vue         # 新增 / 編輯申請 Modal
+│   ├── layout/
+│   │   ├── AppLayout.vue    # 登入後版面框架
+│   │   └── AppSidebar.vue   # 側邊導覽，依角色顯示選單
+│   └── ui/
+│       └── FormModal.vue    # 新增 / 編輯申請 Modal
+├── constants/
+│   └── routes.js        # NAV_ROUTES + PAGE_META 設定
+├── composables/         # 共用邏輯（規劃中）
+├── router/
+│   └── index.js         # Vue Router，requiresAuth + adminOnly Guard
+├── stores/
+│   ├── auth.js          # 登入狀態，login / logout / fetchMe
+│   ├── attendance.js    # 出勤紀錄狀態與 action
+│   └── users.js         # 使用者列表狀態與 action
+├── utils/
+│   └── format.js        # 日期、狀態、操作的格式化函式
 └── views/
     ├── LoginView.vue
     ├── DashboardView.vue
     ├── MyRequestsView.vue
-    ├── ReviewView.vue         # 管理者審核頁面
-    ├── AllRecordsView.vue     # 管理者全體紀錄
-    ├── UsersView.vue          # 員工帳號管理
-    └── LogsView.vue           # 操作審計日誌
+    ├── MyLogsView.vue       # 一般員工查看個人操作紀錄
+    ├── ReviewView.vue       # 管理者審核頁面
+    ├── AllRecordsView.vue   # 管理者全體紀錄
+    ├── UsersView.vue        # 員工帳號管理
+    └── LogsView.vue         # 全體操作審計日誌
 ```
 
 ---
@@ -251,25 +292,32 @@ npm install
 npm run dev
 ```
 
-後端 API（[attendance-system](https://github.com/ktl541529-lang/attendance-system)）部署於 Render。
-
-API Base URL 設定於 `src/api/index.js`：
+後端 API 部署於 Render，API Base URL 設定於 `src/api/client.js`：
 
 ```javascript
-const API_BASE = 'https://attendance-system-p71q.onrender.com/api';
+const BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ||
+  'https://attendance-system-p71q.onrender.com/api'
+```
+
+本地開發如需指向本地後端，在 `.env.local` 加入：
+
+```env
+VITE_API_BASE_URL=http://localhost:3001/api
 ```
 
 ---
 
-## 🔮 Future Improvements
+## 🔮 Future Improvements（Phase 5 規劃）
 
-以下為評估後的規劃方向：
-
-- [ ] **單元測試 Vitest** ── 補充 Pinia store 與 API 模組的單元測試；目前功能仍在迭代，測試優先補在穩定後的核心邏輯
-- [ ] **多租戶架構** ── 需後端同步改造，規劃說明參見 [attendance-system 後端](https://github.com/ktl541529-lang/attendance-system)
-
-> ✅ **TypeScript 遷移**：已於 V3 Angular 版本實現，包含 interface 型別定義、union type、HttpInterceptor 等完整型別安全設計，參見 [attendance-system-ts](https://github.com/ktl541529-lang/attendance-system-ts)。
+- [ ] **Toast 通知系統** ── 建立全域 composable，統一操作成功 / 失敗的回饋
+- [ ] **全域錯誤處理** ── API 失敗提供使用者看得到的 UI 回饋
+- [ ] **表單驗證** ── 統一登入和申請表單的驗證邏輯
+- [ ] **Dashboard 資料化** ── 串接真實數據，顯示本月申請數、待審核數、最近紀錄
+- [ ] **Empty state 統一** ── 抽成共用元件，統一各頁面空狀態的樣式和文案
+- [ ] **composables 抽離** ── 將分頁邏輯抽成 `usePagination` composable
+- [ ] **搜尋 & 篩選** ── AllRecordsView 和 LogsView 加上日期範圍、關鍵字篩選
 
 ---
 
-> 📎 **演進說明**：V2 的資料轉換邏輯仍混在 View 內，隨著頁面複雜度提升這成為維護瓶頸。V3 Angular 版本透過 ViewModel 層解決這個問題，實現 UI 與後端資料結構的完整解耦。
+> 📎 **版本說明**：v2 Angular 版本（[attendance-system-ts](https://github.com/ktl541529-lang/attendance-system-ts)）為 TypeScript 與 Angular 生態的技術探索，主力開發集中於本專案。
