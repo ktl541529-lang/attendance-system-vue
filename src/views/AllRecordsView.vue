@@ -3,21 +3,10 @@ import { ref, onMounted } from 'vue'
 import { useAttendanceStore } from '@/stores/attendance.js'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import { fmtDate, fmtDay, statusBadge, statusLabel } from '@/utils/format.js'
+import { useToast } from '@/composables/useToast.js'
 
+const { toast } = useToast()
 const attendance = useAttendanceStore()
-
-const toasts = ref([])
-let toastCounter = 0
-
-const leaveTypes = ['事假', '病假', '年假', '喪假', '公傷假', '生理假', '其他']
-
-let searchTimer = null
-
-function toast(type, msg) {
-  const id = ++toastCounter
-  toasts.value.push({ id, type, msg })
-  setTimeout(() => { toasts.value = toasts.value.filter(t => t.id !== id) }, 3500)
-}
 
 async function fetchRecords(page = 1) {
   const params = { page, limit: attendance.pagination.limit }
@@ -66,12 +55,6 @@ onMounted(async () => {
 
 <template>
   <AppLayout>
-    <div class="toast-container">
-      <div v-for="t in toasts" :key="t.id" class="toast" :class="'toast-' + t.type">
-        <span>{{ t.type === 'success' ? '✓' : t.type === 'error' ? '✗' : '!' }}</span>{{ t.msg }}
-      </div>
-    </div>
-
     <div class="page-header">
       <div>
         <div class="page-title">全部記錄</div>
